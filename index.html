@@ -15,14 +15,16 @@
         th { background-color: #2ecc71; color: white; }
         tr:hover { background-color: #f9f9f9; }
 
-        .btn { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; color: white; transition: 0.3s; }
+        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; color: white; transition: 0.3s; }
         .btn-update { background-color: #3498db; }
         .btn-delete { background-color: #e74c3c; margin-left: 5px; }
+        .btn-delete-all { background-color: #c0392b; font-weight: bold; margin-bottom: 10px; }
         .btn:hover { opacity: 0.8; }
 
         input[type="number"] { width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
         .stats { display: flex; justify-content: space-around; margin-bottom: 20px; }
         .stat-card { background: #2ecc71; color: white; padding: 15px; border-radius: 8px; text-align: center; flex: 1; margin: 0 10px; }
+        .header-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -35,6 +37,13 @@
             <h3 id="total-users">0</h3>
             <p>මුළු පරිශීලකයින්</p>
         </div>
+    </div>
+
+    <div class="header-actions">
+        <h3 style="margin: 0;">User List</h3>
+        <button class="btn btn-delete-all" onclick="deleteAllUsers()">
+            <i class="fas fa-trash-alt"></i> Delete All Users
+        </button>
     </div>
 
     <table id="user-table">
@@ -71,12 +80,12 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // දත්ත කියවා Table එකට දැමීම
     const userListUI = document.getElementById('user-list');
 
+    // දත්ත කියවා පෙන්වීම
     onValue(ref(db, '/'), (snapshot) => {
         const data = snapshot.val();
-        userListUI.innerHTML = ""; // පරණ දත්ත ඉවත් කිරීම
+        userListUI.innerHTML = ""; 
 
         if (data && data.users) {
             const userIds = Object.keys(data.users);
@@ -101,10 +110,13 @@
                 `;
                 userListUI.innerHTML += row;
             });
+        } else {
+            document.getElementById('total-users').innerText = "0";
+            userListUI.innerHTML = "<tr><td colspan='5' style='text-align:center;'>පරිශීලකයින් නැත.</td></tr>";
         }
     });
 
-    // දත්ත Update කිරීමේ Function එක
+    // එක් පරිශීලකයෙකු Update කිරීම
     window.updateUser = function(id) {
         const newBal = parseInt(document.getElementById(`bal-${id}`).value);
         const newTar = parseInt(document.getElementById(`tar-${id}`).value);
@@ -114,11 +126,11 @@
         updates[`/withdrawals/${id}/target`] = newTar;
 
         update(ref(db), updates).then(() => {
-            alert("User " + id + " updated successfully!");
+            alert("User " + id + " updated!");
         }).catch(err => alert("Error: " + err));
     };
 
-    // User කෙනෙකු ඉවත් කිරීම
+    // එක් පරිශීලකයෙකු මකා දැමීම
     window.deleteUser = function(id) {
         if(confirm("මෙම පරිශීලකයා ඉවත් කිරීමට ඔබට සහතිකද?")) {
             remove(ref(db, `users/${id}`));
@@ -126,6 +138,22 @@
             remove(ref(db, `referrals/${id}`));
             remove(ref(db, `withdrawals/${id}`));
             alert("User deleted!");
+        }
+    };
+
+    // සියලුම පරිශීලකයින් එකවර මකා දැමීම (Permanently delete all data)
+    window.deleteAllUsers = function() {
+        if (confirm("අවධානයයි! සියලුම පරිශීලකයින් සහ ඔවුන්ගේ දත්ත ස්ථිරවම මැකී යනු ඇත. මෙය නැවත ලබා ගත නොහැක. දිගටම කරගෙන යනවාද?")) {
+            const nodesToDelete = ['users', 'balances', 'referrals', 'withdrawals'];
+            const promises = nodesToDelete.map(node => remove(ref(db, node)));
+
+            Promise.all(promises)
+                .then(() => {
+                    alert("සියලුම දත්ත සාර්ථකව මකා දමන ලදී!");
+                })
+                .catch((error) => {
+                    alert("දෝෂයකි: " + error.message);
+                });
         }
     };
 
